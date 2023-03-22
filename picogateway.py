@@ -137,8 +137,6 @@ class PicoGateway:
     def stop(self):
         self._log('Stopping...')
         self.udp_stop = True
-        if self.lora:
-            self.lora.setBlockingCallback(False, None)
         if self.rtc_alarm:
             self.rtc_alarm.deinit()
         if self.stat_alarm:   
@@ -248,8 +246,6 @@ class PicoGateway:
         while not self.udp_stop:
             try:
                 data = self.udp_sock.recv(1024)
-                if data:
-                    self._log('received data: {}', data)
                 _token = data[1:3]
                 _type = data[3]
                 if _type == PUSH_ACK:
@@ -302,7 +298,7 @@ class PicoGateway:
         packet = bytes([PROTOCOL_VERSION]) + token + bytes([TX_ACK]) + ubinascii.unhexlify(self.id) + resp
         with self.udp_lock:
             try:
-                self.sock.sendto(packet, self.server_ip)
+                self.udp_sock.sendto(packet, self.server_ip)
             except Exception as ex:
                 self._log('PULL RSP ACK exception: {}', ex)
     

@@ -18,8 +18,8 @@ def _lora_cb(events, obj):
         obj.rxfw += 1
     
     if events & SX1262.TX_DONE:
-        txnb += 1
-        print('TX done')
+        obj.txnb += 1
+        obj._log('TX done')
 
 
 if True:
@@ -45,4 +45,8 @@ if True:
     
     picogw.start(lora)
     lora.setBlockingCallback(False, _lora_cb, picogw)
-    picogw._udp_thread()
+    try:
+        picogw._udp_thread()
+    except KeyboardInterrupt as e:
+        picogw.stop()
+        lora.setBlockingCallback(False, None)
