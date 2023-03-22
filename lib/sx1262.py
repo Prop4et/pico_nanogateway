@@ -19,7 +19,7 @@ class SX1262(SX126X):
     def __init__(self, spi_bus, clk, mosi, miso, cs, irq, rst, gpio):
         super().__init__(spi_bus, clk, mosi, miso, cs, irq, rst, gpio)
         self._callbackFunction = self._dummyFunction
-
+        self._obj = None
     def begin(self, freq=434.0, bw=125.0, sf=9, cr=7, syncWord=SX126X_SYNC_WORD_PRIVATE,
               power=14, currentLimit=60.0, preambleLength=8, implicit=False, implicitLen=0xFF,
               crcOn=True, txIq=False, rxIq=False, tcxoVoltage=1.6, useRegulatorLDO=False,
@@ -155,12 +155,13 @@ class SX1262(SX126X):
         if not self.blocking:
             ASSERT(super().startReceive())
 
-    def setBlockingCallback(self, blocking, callback=None):
+    def setBlockingCallback(self, blocking, callback=None, obj=None):
         self.blocking = blocking
         if not self.blocking:
             state = super().startReceive()
             ASSERT(state)
             if callback != None:
+                self._obj = obj
                 self._callbackFunction = callback
                 super().setDio1Action(self._onIRQ)
             else:
@@ -264,4 +265,4 @@ class SX1262(SX126X):
         events = self._events()
         if events & SX126X_IRQ_TX_DONE:
             super().startReceive()
-        self._callbackFunction(events)
+        self._callbackFunction(events, self._obj)

@@ -1,22 +1,51 @@
+from nanogateway import NanoGateway
+import config
 from sx1262 import SX1262
-import time
 
-def cb(events):
+def _lora_cb(events, obj):       
     if events & SX1262.RX_DONE:
-        msg, err = sx.recv()
+        obj.rxnb += 1
+        obj.rxok += 1
+        
+        msg, err = lora.recv()
         error = SX1262.STATUS[err]
-        print(msg)
-        print(error)
 
-sx = SX1262(spi_bus=1, clk=10, mosi=11, miso=12, cs=3, irq=20, rst=15, gpio=2)
+        obj._log('--rx data-- {}, rxnb: {} rxok: {}', msg, obj.rxnb, obj.rxok)
+        
+        packet = obj._make_node_packet(msg, obj.rtc.datetime(), 0, 0, lora.getSNR())
+        obj._push_data(packet)
+        obj._log('sent packet: {}', packet)
+        obj.rxfw += 1
+    
+    if events & SX1262.TX_DONE:
+        txnb += 1
+        print('TX done')
 
-# LoRa
-sx.begin(freq=868.1, bw=125.0, sf=7, cr=5, syncWord=0x34,
-         power=-5, currentLimit=60.0, preambleLength=8,
-         implicit=False, implicitLen=0xFF,
-         crcOn=True, txIq=False, rxIq=False,
-         tcxoVoltage=1.7, useRegulatorLDO=False, blocking=True)
 
-
-sx.setBlockingCallback(False, cb)
-print("I'm alive, waiting for packets")
+if True:
+    try:
+        nanogw = NanoGateway(
+            id = config.GATEWAY_ID,
+            frequency = 868.1,
+            sf = 7,
+            bw = 125,
+            cr = 5,
+            ssid = config.WIFI_SSID,
+            password = config.WIFI_PASS,
+            server = config.SERVER,
+            port = config.PORT,
+            ntp_server = config.NTP
+            )
+        
+        lora = SX1262(spi_bus=1, clk=10, mosi=11, miso=12, cs=3, irq=20, rst=15, gpio=2)
+        lora.begin(freq=868.1, bw=125.0, sf=7, cr=5, syncWord=0x34,
+                     power=-5, currentLimit=60.0, preambleLength=8,
+                     implicit=False, implicitLen=0xFF,
+                     crcOn=True, txIq=False, rxIq=False,
+                     tcxoVoltage=1.7, useRegulatorLDO=False, blocking=True)
+        
+        nanogw.start(lora)
+        lora.setBlockingCallback(False, _lora_cb, nanogw)
+    except KeyboardInterrupt as e:
+        nanogw.stop()
+        lora.setBlockingCallback(False, None)
