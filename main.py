@@ -1,4 +1,4 @@
-from nanogateway import NanoGateway
+from picogateway import PicoGateway
 import config
 from sx1262 import SX1262
 
@@ -23,29 +23,26 @@ def _lora_cb(events, obj):
 
 
 if True:
-    try:
-        nanogw = NanoGateway(
-            id = config.GATEWAY_ID,
-            frequency = 868.1,
-            sf = 7,
-            bw = 125,
-            cr = 5,
-            ssid = config.WIFI_SSID,
-            password = config.WIFI_PASS,
-            server = config.SERVER,
-            port = config.PORT,
-            ntp_server = config.NTP
-            )
-        
-        lora = SX1262(spi_bus=1, clk=10, mosi=11, miso=12, cs=3, irq=20, rst=15, gpio=2)
-        lora.begin(freq=868.1, bw=125.0, sf=7, cr=5, syncWord=0x34,
-                     power=-5, currentLimit=60.0, preambleLength=8,
-                     implicit=False, implicitLen=0xFF,
-                     crcOn=True, txIq=False, rxIq=False,
-                     tcxoVoltage=1.7, useRegulatorLDO=False, blocking=True)
-        
-        nanogw.start(lora)
-        lora.setBlockingCallback(False, _lora_cb, nanogw)
-    except KeyboardInterrupt as e:
-        nanogw.stop()
-        lora.setBlockingCallback(False, None)
+    picogw = PicoGateway(
+        id = config.GATEWAY_ID,
+        frequency = 868.1,
+        sf = 7,
+        bw = 125,
+        cr = 5,
+        ssid = config.WIFI_SSID,
+        password = config.WIFI_PASS,
+        server = config.SERVER,
+        port = config.PORT,
+        ntp_server = config.NTP
+        )
+    
+    lora = SX1262(spi_bus=1, clk=10, mosi=11, miso=12, cs=3, irq=20, rst=15, gpio=2)
+    lora.begin(freq=868.1, bw=125.0, sf=7, cr=5, syncWord=0x34,
+                    power=-5, currentLimit=60.0, preambleLength=8,
+                    implicit=False, implicitLen=0xFF,
+                    crcOn=True, txIq=False, rxIq=False,
+                    tcxoVoltage=1.7, useRegulatorLDO=False, blocking=True)
+    
+    picogw.start(lora)
+    lora.setBlockingCallback(False, _lora_cb, picogw)
+    picogw._udp_thread()
