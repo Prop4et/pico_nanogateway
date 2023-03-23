@@ -94,6 +94,7 @@ class SX126X:
         self._packetLength = 0
         self._preambleDetectorLength = 0
 
+
     def begin(self, bw, sf, cr, syncWord, currentLimit, preambleLength, tcxoVoltage, useRegulatorLDO=False, txIq=False, rxIq=False):
         self._bwKhz = bw
         self._sf = sf
@@ -400,7 +401,7 @@ class SX126X:
         if implementation.name == 'circuitpython':
           self.irq = digitalio.DigitalInOut(self._irq)
           self.irq.switch_to_input()
-
+            
     def startTransmit(self, data, len_, addr=0):
         if len_ > SX126X_MAX_PACKET_LENGTH:
             return ERR_PACKET_TOO_LONG

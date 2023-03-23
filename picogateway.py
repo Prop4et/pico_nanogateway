@@ -150,7 +150,6 @@ class PicoGateway:
         self.wlan.disconnect()
         self.wlan.deinit()
         self._log('Forwarder stopped')
-        _thread.exit()
         
     def _connect_to_wifi(self):
         self.wlan.active(True)
@@ -244,7 +243,7 @@ class PicoGateway:
         RX_PK["rxpk"][0]["size"] = len(rx_data)
         return ujson.dumps(RX_PK)
     
-    def _udp_thread(self):
+    def udp_thread(self):
         #reads from server
         try:
             while not self.udp_stop:
@@ -290,7 +289,7 @@ class PicoGateway:
             self.stop_all = True
             self._log('UDP thread stopped, stop all {}', self.stop_all) 
             self.stop()
-            _thread.exit()
+
 
     
     def _send_down_link(self, data, tmst, datr, freq):

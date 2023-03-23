@@ -47,11 +47,7 @@ if True:
     
     picogw.start(lora)
 
-    _thread.start_new_thread(picogw._udp_thread, ())
-    try:
-        while not picogw.get_stop_all():
-            ()
-    except KeyboardInterrupt as e:
-        picogw._log('KeyboardInterrupt {}', e)
-    #lora.setBlockingCallback(False, None)
+    #_thread.start_new_thread(picogw._udp_thread, ())
+    picogw.udp_thread()
     print('Lora callback handler removed')
+    lora.setBlockingCallback(False, None)
