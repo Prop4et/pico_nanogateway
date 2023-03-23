@@ -132,7 +132,7 @@ class PicoGateway:
         #this one could be avoided i think
         self.pull_alarm = Timer(mode=Timer.PERIODIC, period=60500, callback = lambda x : self._pull_data())
         self.udp_stop = False
-        #_thread.start_new_thread(self._udp_thread, ())
+        self.stop_all = False
         
     def stop(self):
         self._log('Stopping...')
@@ -143,8 +143,10 @@ class PicoGateway:
             self.stat_alarm.deinit()
         if self.pull_alarm:
             self.pull_alarm.deinit()
-        while self.udp_stop:
+        self.udp_sock.close()
+        while self.udp_stop and (not self.stop_all):
             time.sleep_ms(50)
+        self.stop_all = True
         self.wlan.disconnect()
         self.wlan.deinit()
         self._log('Forwarder stopped')
@@ -243,46 +245,51 @@ class PicoGateway:
     
     def _udp_thread(self):
         #reads from server
-        while not self.udp_stop:
-            try:
-                data = self.udp_sock.recv(1024)
-                _token = data[1:3]
-                _type = data[3]
-                if _type == PUSH_ACK:
-                    self._log('Push ack')
-                elif _type == PULL_ACK:
-                    self._log('Pull ack')
-                elif _type == PULL_RESP:
-                    self._log('Pull resp')
-                    self.dwnb += 1
-                    ack_error = TX_ERR_NONE
-                    tx_pk = ujson.loads(data[4:])
-                    self._log('--tx_pk-- {}', tx_pk)
-                    if "tmst" in tx_pk['txpk']:
-                        tmst = tx_pk["txpk"]["tmst"]
-                        t_us = tmst - time.ticks_cpu() - 15000
-                        if t_us < 0:
-                            t_us += 0xFFFFFFFF
-                        if t_us < 20000000:
-                            self.uplink_alarm = Timer(mode=Timer.ONE_SHOT, period= t_us/1000, callback = lambda x: self._send_down_link(ubinascii.a2b_base64(tx_pk["txpk"]["data"]), tx_pk["txpk"]["tmst"] - 50, tx_pk["txpk"]["datr"], int(tx_pk["txpk"]["freq"] * 1000) * 1000))
-                        else:
-                            ack_error = TX_ERR_TOO_LATE
-                            self.log('Downlink timestamp error!, t_us: {}', t_us)
-                    else:
-                        self._send_down_link_c(ubinascii.a2b_base64(tx_pk["txpk"]["data"]))
-                        self._ack_pull_rsp(_token, ack_error)
+        try:
+            while not self.udp_stop:
+                try:
+                    data = self.udp_sock.recv(1024)
+                    _token = data[1:3]
+                    _type = data[3]
+                    if _type == PUSH_ACK:
+                        self._log('Push ack')
+                    elif _type == PULL_ACK:
+                        self._log('Pull ack')
+                    elif _type == PULL_RESP:
                         self._log('Pull resp')
-            except OSError as ex:
-                if ex.args[0] == errno.ETIMEDOUT:
-                    pass
-                if ex.args[0] != errno.EAGAIN:
-                    print('UDP recv OSError Exception: ', ex)
-            except Exception as ex:
-                print('UDP recv Exception: ', ex)
-            time.sleep_ms(UDP_THREAD_CYCLE_MS)
-        self.udp_sock.close()
-        self.udp_stop = False
-        print('UDP Thread Stopped')
+                        self.dwnb += 1
+                        ack_error = TX_ERR_NONE
+                        tx_pk = ujson.loads(data[4:])
+                        self._log('--tx_pk-- {}', tx_pk)
+                        if "tmst" in tx_pk['txpk']:
+                            tmst = tx_pk["txpk"]["tmst"]
+                            t_us = tmst - time.ticks_cpu() - 15000
+                            if t_us < 0:
+                                t_us += 0xFFFFFFFF
+                            if t_us < 20000000:
+                                self.uplink_alarm = Timer(mode=Timer.ONE_SHOT, period= t_us/1000, callback = lambda x: self._send_down_link(ubinascii.a2b_base64(tx_pk["txpk"]["data"]), tx_pk["txpk"]["tmst"] - 50, tx_pk["txpk"]["datr"], int(tx_pk["txpk"]["freq"] * 1000) * 1000))
+                            else:
+                                ack_error = TX_ERR_TOO_LATE
+                                self.log('Downlink timestamp error!, t_us: {}', t_us)
+                        else:
+                            self._send_down_link_c(ubinascii.a2b_base64(tx_pk["txpk"]["data"]))
+                            self._ack_pull_rsp(_token, ack_error)
+                            self._log('Pull resp')
+                except OSError as ex:
+                    if ex.args[0] == errno.ETIMEDOUT:
+                        pass
+                    if ex.args[0] != errno.EAGAIN:
+                        print('UDP recv OSError Exception: ', ex)
+                except Exception as ex:
+                    print('UDP recv Exception: ', ex)
+                time.sleep_ms(UDP_THREAD_CYCLE_MS)
+        except KeyboardInterrupt as ki:
+            self._log('Thread keyboard interrupt {} ', ki) 
+        finally:
+            self.stop_all = True
+            self._log('UDP thread stopped, stop all {}', self.stop_all) 
+            _thread.exit()
+
     
     def _send_down_link(self, data, tmst, datr, freq):
         self.lora.send(data)
@@ -302,6 +309,9 @@ class PicoGateway:
             except Exception as ex:
                 self._log('PULL RSP ACK exception: {}', ex)
     
+    def get_stop_all(self):
+        return self.stop_all
+
     def _log(self, message, *args):
         """
         Outputs a log message to stdout.

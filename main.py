@@ -1,7 +1,7 @@
 from picogateway import PicoGateway
 import config
 from sx1262 import SX1262
-
+import _thread
 def _lora_cb(events, obj):       
     if events & SX1262.RX_DONE:
         obj.rxnb += 1
@@ -45,8 +45,11 @@ if True:
     
     picogw.start(lora)
     lora.setBlockingCallback(False, _lora_cb, picogw)
+    _thread.start_new_thread(picogw._udp_thread, ())
     try:
-        picogw._udp_thread()
+        while not picogw.get_stop_all():
+            ()
     except KeyboardInterrupt as e:
-        picogw.stop()
-        lora.setBlockingCallback(False, None)
+        picogw._log('KeyboardInterrupt {}', e)
+    picogw.stop()
+    lora.setBlockingCallback(False, None)
