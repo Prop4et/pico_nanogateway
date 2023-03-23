@@ -2,6 +2,7 @@ from picogateway import PicoGateway
 import config
 from sx1262 import SX1262
 import _thread
+
 def _lora_cb(events, obj):       
     if events & SX1262.RX_DONE:
         obj.rxnb += 1
@@ -42,14 +43,15 @@ if True:
                     implicit=False, implicitLen=0xFF,
                     crcOn=True, txIq=False, rxIq=False,
                     tcxoVoltage=1.7, useRegulatorLDO=False, blocking=True)
+    lora.setBlockingCallback(False, _lora_cb, picogw)
     
     picogw.start(lora)
-    _thread.start_new_thread(picogw._udp_thread(), ())
-    lora.setBlockingCallback(False, _lora_cb, picogw)
+
+    _thread.start_new_thread(picogw._udp_thread, ())
     try:
         while not picogw.get_stop_all():
             ()
     except KeyboardInterrupt as e:
         picogw._log('KeyboardInterrupt {}', e)
-    lora.setBlockingCallback(False, None)
+    #lora.setBlockingCallback(False, None)
     print('Lora callback handler removed')
