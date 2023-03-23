@@ -150,6 +150,7 @@ class PicoGateway:
         self.wlan.disconnect()
         self.wlan.deinit()
         self._log('Forwarder stopped')
+        _thread.exit()
         
     def _connect_to_wifi(self):
         self.wlan.active(True)
@@ -288,6 +289,7 @@ class PicoGateway:
         finally:
             self.stop_all = True
             self._log('UDP thread stopped, stop all {}', self.stop_all) 
+            self.stop()
             _thread.exit()
 
     

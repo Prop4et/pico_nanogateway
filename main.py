@@ -44,12 +44,12 @@ if True:
                     tcxoVoltage=1.7, useRegulatorLDO=False, blocking=True)
     
     picogw.start(lora)
+    _thread.start_new_thread(picogw._udp_thread(), ())
     lora.setBlockingCallback(False, _lora_cb, picogw)
-    _thread.start_new_thread(picogw._udp_thread, ())
     try:
         while not picogw.get_stop_all():
             ()
     except KeyboardInterrupt as e:
         picogw._log('KeyboardInterrupt {}', e)
-    picogw.stop()
     lora.setBlockingCallback(False, None)
+    print('Lora callback handler removed')
