@@ -224,6 +224,7 @@ class PicoGateway:
         
     def _make_stat_packet(self):
         now = self.rtc.datetime()
+        self._log('Stat packet timestamp: {}', now)
         STAT_PK["stat"]["time"] = "%d-%02d-%02d %02d:%02d:%02d GMT" % (now[0], now[1], now[2], now[4], now[5], now[6])
         STAT_PK["stat"]["rxnb"] = self.rxnb
         STAT_PK["stat"]["rxok"] = self.rxok
@@ -232,9 +233,9 @@ class PicoGateway:
         STAT_PK["stat"]["txnb"] = self.txnb
         return ujson.dumps(STAT_PK)
     
-    def _make_node_packet(self, rx_data, rx_time, tmst, rssi, snr):
-        RX_PK["rxpk"][0]["time"] = "%d-%02d-%02dT%02d:%02d:%02d.%dZ" % (rx_time[0], rx_time[1], rx_time[2], rx_time[3], rx_time[4], rx_time[5], rx_time[6])
-        RX_PK["rxpk"][0]["tmst"] = tmst
+    def _make_node_packet(self, rx_data, rx_time, rssi, snr):
+        RX_PK["rxpk"][0]["time"] = "%d-%02d-%02dT%02d:%02d:%02d.%dZ" % (rx_time[0], rx_time[1], rx_time[2], rx_time[4], rx_time[5], rx_time[6], rx_time[7])
+        RX_PK["rxpk"][0]["tmst"] = time.ticks_cpu()
         RX_PK["rxpk"][0]["freq"] = 868.1
         RX_PK["rxpk"][0]["datr"] = 'SF7BW125'
         RX_PK["rxpk"][0]["rssi"] = rssi
@@ -267,10 +268,10 @@ class PicoGateway:
                             if t_us < 0:
                                 t_us += 0xFFFFFFFF
                             if t_us < 20000000:
-                                self.uplink_alarm = Timer(mode=Timer.ONE_SHOT, period= t_us/1000, callback = lambda x: self._send_down_link(ubinascii.a2b_base64(tx_pk["txpk"]["data"]), tx_pk["txpk"]["tmst"] - 50, tx_pk["txpk"]["datr"], int(tx_pk["txpk"]["freq"] * 1000) * 1000))
+                                self.uplink_alarm = Timer(mode=Timer.ONE_SHOT, period= int(t_us/1000), callback = lambda x: self._send_down_link(ubinascii.a2b_base64(tx_pk["txpk"]["data"]), tx_pk["txpk"]["tmst"] - 50, tx_pk["txpk"]["datr"], int(tx_pk["txpk"]["freq"] * 1000) * 1000))
                             else:
                                 ack_error = TX_ERR_TOO_LATE
-                                self.log('Downlink timestamp error!, t_us: {}', t_us)
+                                self._log('Downlink timestamp error!, t_us: {}', t_us)
                         else:
                             self._send_down_link_c(ubinascii.a2b_base64(tx_pk["txpk"]["data"]))
                             self._ack_pull_rsp(_token, ack_error)
