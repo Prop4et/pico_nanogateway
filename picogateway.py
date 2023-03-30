@@ -224,7 +224,6 @@ class PicoGateway:
         
     def _make_stat_packet(self):
         now = self.rtc.datetime()
-        self._log('Stat packet timestamp: {}', now)
         STAT_PK["stat"]["time"] = "%d-%02d-%02d %02d:%02d:%02d GMT" % (now[0], now[1], now[2], now[4], now[5], now[6])
         STAT_PK["stat"]["rxnb"] = self.rxnb
         STAT_PK["stat"]["rxok"] = self.rxok
