@@ -11,8 +11,6 @@ def _lora_cb(events, obj):
         msg, err = lora.recv()
         error = SX1262.STATUS[err]
 
-        obj._log('--rx data-- {}, rxnb: {} rxok: {}', msg, obj.rxnb, obj.rxok)
-        
         packet = obj._make_node_packet(msg, obj.rtc.datetime(), 0, lora.getSNR())
         obj._push_data(packet)
         obj._log('sent packet: {}', packet)
@@ -39,7 +37,7 @@ if True:
     
     lora = SX1262(spi_bus=1, clk=10, mosi=11, miso=12, cs=3, irq=20, rst=15, gpio=2)
     lora.begin(freq=868.1, bw=125.0, sf=7, cr=5, syncWord=0x34,
-                    power=-10, currentLimit=60.0, preambleLength=8,
+                    power=-5, currentLimit=60.0, preambleLength=8,
                     implicit=False, implicitLen=0xFF,
                     crcOn=True, txIq=False, rxIq=False,
                     tcxoVoltage=1.7, useRegulatorLDO=False, blocking=True)
