@@ -129,7 +129,6 @@ class PicoGateway:
         self.lora = lora_obj
         self._push_data(self._make_stat_packet())
         self.stat_alarm = Timer(mode=Timer.PERIODIC, period=30000, callback = lambda t: self._push_data(self._make_stat_packet()))
-        #this one could be avoided i think
         self.pull_alarm = Timer(mode=Timer.PERIODIC, period=60500, callback = lambda x : self._pull_data())
         self.udp_stop = False
         self.stop_all = False
@@ -184,7 +183,7 @@ class PicoGateway:
         t = val - config.NTP_DELTA    
         tm = time.gmtime(t)
         #(y m d weekday h m s subseconds)
-        self.rtc.datetime((tm[0], tm[1], tm[2], 0, tm[3], tm[4], tm[5], 0)) #weekday doesn't seem to work, don't really matters though
+        self.rtc.datetime((tm[0], tm[1], tm[2], 0, tm[3], tm[4], tm[5], 0)) #weekday doesn't seem to work, doesn't really matters though
         self._log('Current time is: {}', self.rtc.datetime())
     
     #pushes generic data
@@ -237,8 +236,8 @@ class PicoGateway:
         RX_PK["rxpk"][0]["tmst"] = time.ticks_cpu()
         RX_PK["rxpk"][0]["freq"] = 868.1
         RX_PK["rxpk"][0]["datr"] = 'SF7BW125'
-        RX_PK["rxpk"][0]["rssi"] = rssi
-        RX_PK["rxpk"][0]["lsnr"] = snr
+        RX_PK["rxpk"][0]["rssi"] = int(rssi)
+        RX_PK["rxpk"][0]["lsnr"] = int(snr)
         RX_PK["rxpk"][0]["data"] = ubinascii.b2a_base64(rx_data)[:-1]
         RX_PK["rxpk"][0]["size"] = len(rx_data)
         return ujson.dumps(RX_PK)

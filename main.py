@@ -11,7 +11,7 @@ def _lora_cb(events, obj):
         msg, err = lora.recv()
         error = SX1262.STATUS[err]
 
-        packet = obj._make_node_packet(msg, obj.rtc.datetime(), 0, lora.getSNR())
+        packet = obj._make_node_packet(msg, obj.rtc.datetime(), lora.getRSSI(), lora.getSNR())
         obj._push_data(packet)
         obj._log('sent packet: {}', packet)
         obj.rxfw += 1
