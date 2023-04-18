@@ -293,7 +293,7 @@ class PicoGateway:
     
     def _send_down_link(self, data, tmst, datr, freq):
         self.lora.send(data)
-        self._log('Sent downlink packet scheduled on {:.3f}: {}', tmst/1000000, data)
+        self._log('Sent downlink packet scheduled on {:.3f}: {}', tmst/1000000)
         
     def _send_down_link_c(self, data):
         self.lora.send(data)

@@ -39,7 +39,7 @@ if True:
     lora.begin(freq=868.1, bw=125.0, sf=7, cr=5, syncWord=0x34,
                     power=-5, currentLimit=60.0, preambleLength=8,
                     implicit=False, implicitLen=0xFF,
-                    crcOn=True, txIq=False, rxIq=False,
+                    crcOn=True, txIq=True, rxIq=False,
                     tcxoVoltage=1.7, useRegulatorLDO=False, blocking=True)
     lora.setBlockingCallback(False, _lora_cb, picogw)
     

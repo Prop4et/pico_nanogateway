@@ -96,11 +96,11 @@ class SX126X:
 
 
     def begin(self, bw, sf, cr, syncWord, currentLimit, preambleLength, tcxoVoltage, useRegulatorLDO=False, txIq=False, rxIq=False):
-        self._bwKhz = bw
-        self._sf = sf
+        self._bwKhz = 125
+        self._sf = 7
 
         self._bw = SX126X_LORA_BW_125_0
-        self._cr = SX126X_LORA_CR_4_7
+        self._cr = SX126X_LORA_CR_4_5
         self._ldro = 0x00
         self._crcType = SX126X_LORA_CRC_ON
         self._preambleLength = preambleLength
@@ -1115,7 +1115,6 @@ class SX126X:
                 self._ldro = SX126X_LORA_LOW_DATA_RATE_OPTIMIZE_OFF
         else:
             self._ldro = ldro
-
         data = [sf, bw, cr, self._ldro]
         return self.SPIwriteCommand([SX126X_CMD_SET_MODULATION_PARAMS], 1, data, 4)
 
