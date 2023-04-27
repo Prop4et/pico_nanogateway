@@ -129,7 +129,7 @@ class PicoGateway:
         self.lora = lora_obj
         self._push_data(self._make_stat_packet())
         self.stat_alarm = Timer(mode=Timer.PERIODIC, period=30000, callback = lambda t: self._push_data(self._make_stat_packet()))
-        self.pull_alarm = Timer(mode=Timer.PERIODIC, period=60500, callback = lambda x : self._pull_data())
+        self.pull_alarm = Timer(mode=Timer.PERIODIC, period=25000, callback = lambda x : self._pull_data())
         self.udp_stop = False
         self.stop_all = False
         
@@ -262,7 +262,7 @@ class PicoGateway:
                         self._log('--tx_pk-- {}', tx_pk)
                         if "tmst" in tx_pk['txpk']:
                             tmst = tx_pk["txpk"]["tmst"]
-                            t_us = tmst - time.ticks_cpu() - 15000
+                            t_us = tmst - time.ticks_cpu() - 28000
                             if t_us < 0:
                                 t_us += 0xFFFFFFFF
                             if t_us < 20000000:
@@ -272,8 +272,8 @@ class PicoGateway:
                                 self._log('Downlink timestamp error!, t_us: {}', t_us)
                         else:
                             self._send_down_link_c(ubinascii.a2b_base64(tx_pk["txpk"]["data"]))
-                            self._ack_pull_rsp(_token, ack_error)
-                            self._log('Pull resp')
+                        self._ack_pull_rsp(_token, ack_error)
+                        self._log('Pull resp')
                 except OSError as ex:
                     if ex.args[0] == errno.ETIMEDOUT:
                         pass
@@ -293,7 +293,7 @@ class PicoGateway:
     
     def _send_down_link(self, data, tmst, datr, freq):
         self.lora.send(data)
-        self._log('Sent downlink packet scheduled on {:.3f}: {}', tmst/1000000)
+        self._log('Sent downlink packet scheduled on {:.3f} with data {} at {} on freq {}', tmst/1000000, data, datr, freq)
         
     def _send_down_link_c(self, data):
         self.lora.send(data)
