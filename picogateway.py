@@ -13,6 +13,7 @@ import uos
 import ubinascii
 import ujson
 import errno
+import machine
 
 PROTOCOL_VERSION = const(2)
 
@@ -108,15 +109,19 @@ class PicoGateway:
         self.lora = None
         
         self.rtc = machine.RTC()
+        self.led = machine.Pin("LED", machine.Pin.OUT)
         
     def start(self, lora_obj):
         self._log('Starting LoRa pico forwarder with id: {}', self.id)
         self.wlan = network.WLAN(network.STA_IF)
+        self.led.on()
+
         self._connect_to_wifi()
         
         self._log('Syncing time with {} ...', self.ntp_server)
         #set rtc
         self._set_time(None)
+        self.led.off()
         #set periodic alarm to resync the rtc (dunno if needed)
         self.rtc_alarm = Timer(mode=Timer.PERIODIC, period = self.ntp_period*1000, callback=self._set_time)
         
@@ -154,8 +159,13 @@ class PicoGateway:
         self.wlan.active(True)
         self.wlan.connect(self.ssid, self.password)
         self._log('...connecting to : {}', self.ssid)
+        i = 0
         while not self.wlan.isconnected():
             time.sleep_ms(50)
+            i += 1
+            if i >= 1200:
+                self.wlan.active(False)
+                machine.reset()
         self._log('Connected')
         
     def _set_time(self, t):
@@ -192,35 +202,36 @@ class PicoGateway:
         token = uos.urandom(2)
         packet = bytes([PROTOCOL_VERSION]) + token + bytes([PUSH_DATA]) + ubinascii.unhexlify(self.id) + data
         with self.udp_lock:
+            self.led.on()
             try:
                 self.udp_sock.sendto(packet, self.server_ip)
             except Exception as ex:
-                self._log('Filed to push uplink packet to server: {}', ex)
-
+                self._log('Failed to push uplink packet to server: {}', ex)
+                if ex.args[0] == 113:
+                    self.led.on()
+                    self._connect_to_wifi()
+                    self._set_time(None)
+            finally:
+                    self.led.off()
         
     def _pull_data(self):
         self._log('pull data')
         token = uos.urandom(2)
         packet = bytes([PROTOCOL_VERSION]) + token + bytes([PULL_DATA]) + ubinascii.unhexlify(self.id)
+
         with self.udp_lock:
+            self.led.on()
             try:
                 self.udp_sock.sendto(packet, self.server_ip)
             except Exception as ex:
                 self._log('Failed to pull downlink packets from server: {}', ex)
+                if ex.args[0] == 113:
+                    self._connect_to_wifi()
+                    self._set_time(None)
+            finally:
+                self.led.off()
 
-    #function created for the timer callback since it must take the object timer as the argument    
-    def _push_data_stat(self, t):
-        data = self._make_stat_packet()
-        self._log('Data stats')
-        token = uos.urandom(2)
-        packet = bytes([PROTOCOL_VERSION]) + token + bytes([PUSH_DATA]) + ubinascii.unhexlify(self.id) + data
-        with self.udp_lock:
-            try:
-                self.udp_sock.sendto(packet, self.server_ip)
-            except Exception as ex:
-                self._log('Filed to push uplink packet to server: {}', ex)
-        self._log('Pushed stats {}', packet)
-        
+ 
     def _make_stat_packet(self):
         now = self.rtc.datetime()
         STAT_PK["stat"]["time"] = "%d-%02d-%02d %02d:%02d:%02d GMT" % (now[0], now[1], now[2], now[4], now[5], now[6])
@@ -235,7 +246,7 @@ class PicoGateway:
         RX_PK["rxpk"][0]["time"] = "%d-%02d-%02dT%02d:%02d:%02d.%dZ" % (rx_time[0], rx_time[1], rx_time[2], rx_time[4], rx_time[5], rx_time[6], rx_time[7])
         RX_PK["rxpk"][0]["tmst"] = time.ticks_cpu()
         RX_PK["rxpk"][0]["freq"] = 868.1
-        RX_PK["rxpk"][0]["datr"] = 'SF7BW125'
+        RX_PK["rxpk"][0]["datr"] = 'SF12BW125'
         RX_PK["rxpk"][0]["rssi"] = int(rssi)
         RX_PK["rxpk"][0]["lsnr"] = int(snr)
         RX_PK["rxpk"][0]["data"] = ubinascii.b2a_base64(rx_data)[:-1]
@@ -262,14 +273,15 @@ class PicoGateway:
                         self._log('--tx_pk-- {}', tx_pk)
                         if "tmst" in tx_pk['txpk']:
                             tmst = tx_pk["txpk"]["tmst"]
-                            t_us = tmst - time.ticks_cpu() - 28000
+                            ticks_cpu = time.ticks_cpu()
+                            t_us = tmst - ticks_cpu - 28000
                             if t_us < 0:
                                 t_us += 0xFFFFFFFF
                             if t_us < 20000000:
                                 self.uplink_alarm = Timer(mode=Timer.ONE_SHOT, period= int(t_us/1000), callback = lambda x: self._send_down_link(ubinascii.a2b_base64(tx_pk["txpk"]["data"]), tx_pk["txpk"]["tmst"] - 50, tx_pk["txpk"]["datr"], int(tx_pk["txpk"]["freq"] * 1000) * 1000))
                             else:
                                 ack_error = TX_ERR_TOO_LATE
-                                self._log('Downlink timestamp error!, t_us: {}', t_us)
+                                self._log('Downlink timestamp error!, t_us: {}, tmst: {}, ticks_cpu{}', t_us, tx_pk["txpk"]["tmst"], ticks_cpu)
                         else:
                             self._send_down_link_c(ubinascii.a2b_base64(tx_pk["txpk"]["data"]))
                         self._ack_pull_rsp(_token, ack_error)
