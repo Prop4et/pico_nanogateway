@@ -25,7 +25,7 @@ if True:
     picogw = PicoGateway(
         id = config.GATEWAY_ID,
         frequency = 868.1,
-        sf = 7,
+        sf = 12,
         bw = 125,
         cr = 5,
         ssid = config.WIFI_SSID,
@@ -36,7 +36,7 @@ if True:
         )
     
     lora = SX1262(spi_bus=1, clk=10, mosi=11, miso=12, cs=3, irq=20, rst=15, gpio=2)
-    lora.begin(freq=868.1, bw=125.0, sf=7, cr=5, syncWord=0x34,
+    lora.begin(freq=868.1, bw=125.0, sf=12, cr=5, syncWord=0x34,
                     power=-5, currentLimit=60.0, preambleLength=8,
                     implicit=False, implicitLen=0xFF,
                     crcOn=True, txIq=True, rxIq=False,
@@ -44,8 +44,6 @@ if True:
     lora.setBlockingCallback(False, _lora_cb, picogw)
     
     picogw.start(lora)
-
-    #_thread.start_new_thread(picogw._udp_thread, ())
     picogw.udp_thread()
     print('Lora callback handler removed')
     lora.setBlockingCallback(False, None)
